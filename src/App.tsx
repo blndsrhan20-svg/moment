@@ -64,7 +64,13 @@ export default function App() {
     if (!supabase || !session) return;
     const {data,error}=await supabase.from("posts").select("id,caption,media_urls,created_at,user_id,profiles(username,display_name,avatar_url)").order("created_at",{ascending:false}).limit(30);
     if(error){setNotice("تعذر تحميل المنشورات: "+error.message);return;}
-    setPosts((data||[]).map((p:any)=>({id:p.id,author:p.profiles?.display_name||"عضو MOMENT",handle:"@"+(p.profiles?.username||"member"),avatar:(p.profiles?.display_name||"م")[0],time:new Date(p.created_at).toLocaleString("ar"),text:p.caption||"",image:p.media_urls?.[0],likes:0})));
+    const rows=data||[];
+    const postIds=rows.map((p:any)=>p.id);
+    const {data:likeRows,error:likeError}=postIds.length?await supabase.from("likes").select("post_id,user_id").in("post_id",postIds):{data:[],error:null};
+    if(likeError)setNotice("تم تحميل المنشورات، لكن تعذر تحميل الإعجابات.");
+    const allLikes=likeRows||[];
+    setLikes(allLikes.filter((item:any)=>item.user_id===session.user.id).map((item:any)=>item.post_id));
+    setPosts(rows.map((p:any)=>({id:p.id,author:p.profiles?.display_name||"عضو MOMENT",handle:"@"+(p.profiles?.username||"member"),avatar:(p.profiles?.display_name||"م")[0],time:new Date(p.created_at).toLocaleString("ar"),text:p.caption||"",image:p.media_urls?.[0],likes:allLikes.filter((item:any)=>item.post_id===p.id).length})));
   }
   useEffect(()=>{if(session) void loadPosts(); else setPosts([]);},[session]);
 
