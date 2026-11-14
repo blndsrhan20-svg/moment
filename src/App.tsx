@@ -1,130 +1,63 @@
-import { useEffect, useState } from "react";
-import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import { Bell, Compass, Heart, Home, MessageCircle, MoreHorizontal, Plus, Search, Send, Settings, UserRound, LogOut, ImagePlus, Video, Pencil, X, Users } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { createClient, type Session } from "@supabase/supabase-js";
+import { Bell, Compass, Heart, Home, MessageCircle, MoreHorizontal, Plus, Search, Send, UserRound, LogOut, ImagePlus, Pencil, X, Users, Share2, Trash2, RefreshCw } from "lucide-react";
 
-type Profile = { id: string; username: string | null; display_name: string | null; bio: string | null; avatar_url: string | null };
-type Post = { id: string; user_id: string; author: string; handle: string; avatar: string; avatarUrl?: string; time: string; text: string; media?: string[]; likes: number };
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-const supabase: SupabaseClient | null = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+type Profile = { id:string; username:string; display_name:string; bio:string; avatar_url:string|null };
+type Post = { id:string; user_id:string; author:string; handle:string; avatar:string; avatarUrl?:string; time:string; text:string; media:string[]; likes:number; comments:number };
+type Comment = { id:string; body:string; user_id:string; author:string; handle:string; time:string };
+const url=import.meta.env.VITE_SUPABASE_URL as string|undefined;
+const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string|undefined;
+const db=url&&key?createClient(url,key):null;
 
-function AuthScreen() {
-  const [mode, setMode] = useState<"login" | "signup">("signup");
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [displayName, setDisplayName] = useState("");
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  async function submit(e: React.FormEvent) {
-    e.preventDefault(); if (!supabase) return; setBusy(true); setMessage("");
-    try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim() } } });
-        if (error) throw error; setMessage(data.session ? "تم إنشاء حسابك بنجاح." : "تم إنشاء الحساب. افحص بريدك لتأكيده ثم سجّل الدخول.");
-      } else { const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (error) throw error; }
-    } catch (err) { setMessage(err instanceof Error ? err.message : "تعذر إكمال العملية."); } finally { setBusy(false); }
-  }
-  return <main className="auth-wrap" dir="rtl"><form className="auth-card" onSubmit={submit}><div className="brand auth-brand"><span className="brand-mark">M</span><span>MOMENT</span></div><h1>{mode === "signup" ? "ابدأ لحظتك" : "مرحباً بعودتك"}</h1><p>كل لحظة تستحق أن تُشارك.</p>
-    {mode === "signup" && <label>الاسم الظاهر<input required value={displayName} onChange={e=>setDisplayName(e.target.value)} minLength={2} maxLength={50} placeholder="اسمك"/></label>}
-    <label>البريد الإلكتروني<input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label>
-    <label>كلمة المرور<input required type="password" autoComplete={mode==="signup"?"new-password":"current-password"} minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="6 أحرف على الأقل"/></label>
-    <button className="auth-submit" disabled={busy}>{busy?"جارٍ التنفيذ…":mode==="signup"?"إنشاء حساب":"تسجيل الدخول"}</button>
-    {message && <div className="auth-message" role="status">{message}</div>}
-    <button type="button" className="auth-switch" onClick={()=>{setMode(mode==="signup"?"login":"signup");setMessage("");}}>{mode==="signup"?"لديك حساب؟ سجّل الدخول":"ليس لديك حساب؟ أنشئ حساباً"}</button><small>لن نعرض منشورات تجريبية. ما تراه هنا يأتي من قاعدة البيانات.</small>
-  </form></main>;
+function AuthScreen(){
+ const [mode,setMode]=useState<"signup"|"login">("signup"),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[name,setName]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState("");
+ async function submit(e:FormEvent){e.preventDefault();if(!db)return;setBusy(true);setMsg("");try{
+  if(mode==="signup"){const {data,error}=await db.auth.signUp({email:email.trim(),password,options:{data:{display_name:name.trim()}}});if(error)throw error;setMsg(data.session?"تم إنشاء الحساب.":"تم إنشاء الحساب. افحص بريدك لتأكيده ثم سجّل الدخول.");}
+  else{const {error}=await db.auth.signInWithPassword({email:email.trim(),password});if(error)throw error;}
+ }catch(e){setMsg(e instanceof Error?e.message:"تعذر إكمال العملية.");}finally{setBusy(false);}}
+ return <main className="auth-wrap" dir="rtl"><form className="auth-card" onSubmit={submit}><div className="brand auth-brand"><span className="brand-mark">M</span><span>MOMENT</span></div><h1>{mode==="signup"?"ابدأ لحظتك":"مرحباً بعودتك"}</h1><p>كل لحظة تستحق أن تُشارك.</p>{mode==="signup"&&<label>الاسم الظاهر<input required minLength={2} maxLength={50} value={name} onChange={e=>setName(e.target.value)}/></label>}<label>البريد الإلكتروني<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email"/></label><label>كلمة المرور<input required type="password" minLength={6} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==="signup"?"new-password":"current-password"}/></label><button className="auth-submit" disabled={busy}>{busy?"لحظة…":mode==="signup"?"إنشاء حساب":"تسجيل الدخول"}</button>{msg&&<div className="auth-message">{msg}</div>}<button type="button" className="auth-switch" onClick={()=>{setMode(mode==="signup"?"login":"signup");setMsg("");}}>{mode==="signup"?"لديك حساب؟ سجّل الدخول":"إنشاء حساب جديد"}</button></form></main>;
 }
 
-export default function App() {
-  const [session,setSession]=useState<Session|null>(null); const [authReady,setAuthReady]=useState(false);
-  const [posts,setPosts]=useState<Post[]>([]); const [draft,setDraft]=useState(""); const [notice,setNotice]=useState("");
-  const [likes,setLikes]=useState<string[]>([]); const [busy,setBusy]=useState(false); const [page,setPage]=useState<"feed"|"profile">("feed");
-  const [profile,setProfile]=useState<Profile|null>(null); const [editProfile,setEditProfile]=useState(false);
-  const [name,setName]=useState(""); const [username,setUsername]=useState(""); const [bio,setBio]=useState("");
-  const [mediaFile,setMediaFile]=useState<File|null>(null); const [avatarFile,setAvatarFile]=useState<File|null>(null);
-  const [followers,setFollowers]=useState(0); const [following,setFollowing]=useState(0);
+export default function App(){
+ const [session,setSession]=useState<Session|null>(null),[ready,setReady]=useState(false),[profile,setProfile]=useState<Profile|null>(null);
+ const [posts,setPosts]=useState<Post[]>([]),[likes,setLikes]=useState<string[]>([]),[draft,setDraft]=useState(""),[file,setFile]=useState<File|null>(null);
+ const [notice,setNotice]=useState(""),[busy,setBusy]=useState(false),[page,setPage]=useState<"feed"|"profile">("feed"),[edit,setEdit]=useState(false);
+ const [name,setName]=useState(""),[username,setUsername]=useState(""),[bio,setBio]=useState(""),[avatarFile,setAvatarFile]=useState<File|null>(null);
+ const [followers,setFollowers]=useState(0),[following,setFollowing]=useState(0);
+ const [commentPost,setCommentPost]=useState<string|null>(null),[comments,setComments]=useState<Record<string,Comment[]>>({}),[commentDraft,setCommentDraft]=useState<Record<string,string>>({});
+ const [followingIds,setFollowingIds]=useState<string[]>([]),[search,setSearch]=useState(""),[searchResults,setSearchResults]=useState<Profile[]>([]),[viewProfile,setViewProfile]=useState<Profile|null>(null);
 
-  useEffect(()=>{ if(!supabase){setAuthReady(true);return;} supabase.auth.getSession().then(({data})=>{setSession(data.session);setAuthReady(true);});
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>setSession(next)); return ()=>subscription.unsubscribe(); },[]);
-  async function loadProfile() {
-    if(!supabase||!session)return;
-    const {data,error}=await supabase.from("profiles").select("id,username,display_name,bio,avatar_url").eq("id",session.user.id).maybeSingle();
-    if(error){setNotice("تعذر تحميل الملف الشخصي: "+error.message);return;}
-    if(data){setProfile(data as Profile);setName(data.display_name||"");setUsername(data.username||"");setBio(data.bio||"");}
-    const [a,b]=await Promise.all([supabase.from("follows").select("*",{count:"exact",head:true}).eq("following_id",session.user.id),supabase.from("follows").select("*",{count:"exact",head:true}).eq("follower_id",session.user.id)]);
-    setFollowers(a.count||0);setFollowing(b.count||0);
-  }
-  async function loadPosts() {
-    if(!supabase||!session)return;
-    const {data,error}=await supabase.from("posts").select("id,caption,media_urls,created_at,user_id,profiles(username,display_name,avatar_url)").order("created_at",{ascending:false}).limit(40);
-    if(error){setNotice("تعذر تحميل المنشورات: "+error.message);return;}
-    const rows=data||[]; const ids=rows.map((p:any)=>p.id);
-    const {data:likeRows,error:likeError}=ids.length?await supabase.from("likes").select("post_id,user_id").in("post_id",ids):{data:[],error:null};
-    if(likeError)setNotice("تعذر تحميل بعض الإعجابات.");
-    const all=likeRows||[];setLikes(all.filter((x:any)=>x.user_id===session.user.id).map((x:any)=>x.post_id));
-    setPosts(rows.map((p:any)=>({id:p.id,user_id:p.user_id,author:p.profiles?.display_name||"عضو MOMENT",handle:"@"+(p.profiles?.username||"member"),avatar:(p.profiles?.display_name||"م")[0],avatarUrl:p.profiles?.avatar_url||undefined,time:new Date(p.created_at).toLocaleString("ar"),text:p.caption||"",media:p.media_urls||[],likes:all.filter((x:any)=>x.post_id===p.id).length})));
-  }
-  useEffect(()=>{if(session){void loadProfile();void loadPosts();}else{setPosts([]);setProfile(null);}},[session]);
-  async function upload(file:File,folder:"posts"|"avatars") {
-    if(!supabase||!session)throw new Error("يجب تسجيل الدخول أولاً.");
-    const isVideo=file.type.startsWith("video/"); const isImage=file.type.startsWith("image/");
-    if(!isVideo&&!isImage)throw new Error("اختر صورة أو فيديو فقط.");
-    if(file.size>(isVideo?100:15)*1024*1024)throw new Error(isVideo?"الحد الأقصى للفيديو 100MB.":"الحد الأقصى للصورة 15MB.");
-    const ext=file.name.split(".").pop()?.toLowerCase()|| (isVideo?"mp4":"jpg");
-    const path=session.user.id+"/"+folder+"/"+crypto.randomUUID()+"."+ext;
-    const {error}=await supabase.storage.from("moment-media").upload(path,file,{contentType:file.type,upsert:false});
-    if(error)throw error;
-    return supabase.storage.from("moment-media").getPublicUrl(path).data.publicUrl;
-  }
-  async function publish() {
-    if(!supabase||!session||(!draft.trim()&&!mediaFile))return;setBusy(true);setNotice("");
-    try { const media=mediaFile?[await upload(mediaFile,"posts")]:[];
-      const {error}=await supabase.from("posts").insert({user_id:session.user.id,caption:draft.trim(),media_urls:media});
-      if(error)throw error;setDraft("");setMediaFile(null);const input=document.getElementById("post-media") as HTMLInputElement|null;if(input)input.value="";
-      setNotice("تم نشر لحظتك وحفظها.");await loadPosts();
-    } catch(err){setNotice("تعذر النشر: "+(err instanceof Error?err.message:"خطأ غير معروف"));} finally{setBusy(false);}
-  }
-  async function toggleLike(id:string) {
-    if(!supabase||!session)return;const exists=likes.includes(id);
-    const result=exists?await supabase.from("likes").delete().eq("post_id",id).eq("user_id",session.user.id):await supabase.from("likes").insert({post_id:id,user_id:session.user.id});
-    if(result.error){setNotice("تعذر تحديث الإعجاب: "+result.error.message);return;}
-    setLikes(v=>exists?v.filter(x=>x!==id):[...v,id]);setPosts(v=>v.map(p=>p.id===id?{...p,likes:Math.max(0,p.likes+(exists?-1:1))}:p));
-  }
-  async function saveProfile(e:React.FormEvent) {
-    e.preventDefault();if(!supabase||!session)return;setBusy(true);setNotice("");
-    try {let avatar=profile?.avatar_url||null;if(avatarFile)avatar=await upload(avatarFile,"avatars");
-      const cleanUsername=username.trim().toLowerCase().replace(/^@/,"");
-      if(cleanUsername&&!/^[a-z0-9_]{3,24}$/.test(cleanUsername))throw new Error("اسم المستخدم: 3 إلى 24 حرفاً إنجليزياً أو رقماً أو _.");
-      const {error}=await supabase.from("profiles").update({display_name:name.trim(),username:cleanUsername||null,bio:bio.trim(),avatar_url:avatar}).eq("id",session.user.id);
-      if(error)throw error;setAvatarFile(null);setEditProfile(false);await loadProfile();await loadPosts();setNotice("تم حفظ ملفك الشخصي.");
-    } catch(err){setNotice("تعذر حفظ الملف: "+(err instanceof Error?err.message:"خطأ غير معروف"));}finally{setBusy(false);}
-  }
-
-  if(!supabase)return <main className="auth-wrap" dir="rtl"><section className="auth-card"><div className="brand auth-brand"><span className="brand-mark">M</span><span>MOMENT</span></div><h1>إعداد الاتصال مطلوب</h1><p>تأكد من متغيرَي بناء Cloudflare: VITE_SUPABASE_URL و VITE_SUPABASE_PUBLISHABLE_KEY.</p></section></main>;
-  if(!authReady)return <main className="auth-wrap">جارٍ التحقق من الجلسة…</main>;if(!session)return <AuthScreen/>;
-  const email=session.user.email||"";
-  const avatar=profile?.avatar_url;
-  return <div className="app-shell" dir="rtl">
-    <aside className="sidebar"><div className="brand"><span className="brand-mark">M</span><span>MOMENT</span></div>
-      <nav><a className={page==="feed"?"active":""} onClick={()=>setPage("feed")}><Home size={21}/> الرئيسية</a><a><Compass size={21}/> استكشف</a><a><MessageCircle size={21}/> الرسائل</a><a><Bell size={21}/> الإشعارات</a><a className={page==="profile"?"active":""} onClick={()=>setPage("profile")}><UserRound size={21}/> ملفي الشخصي</a></nav>
-      <button className="new-post" onClick={()=>{setPage("feed");document.getElementById("post-box")?.focus();}}><Plus size={19}/> لحظة جديدة</button>
-      <div className="sidebar-bottom"><span>{email}</span><button className="icon-button" onClick={()=>supabase.auth.signOut()} aria-label="تسجيل الخروج"><LogOut size={18}/></button></div>
-    </aside>
-    <main className="feed"><header className="topbar"><div><span className="mobile-brand">MOMENT</span><h1>{page==="feed"?"الرئيسية":"ملفي الشخصي"}</h1></div><button className="icon-button"><Search size={20}/></button></header>
-      {notice&&<div className="notice" role="status">{notice}</div>}
-      {page==="feed"?<>
-        <section className="composer"><div className="composer-avatar">{avatar?<img src={avatar} alt=""/>:(profile?.display_name||"م")[0]}</div><div className="composer-main"><textarea id="post-box" value={draft} onChange={e=>setDraft(e.target.value)} placeholder="بماذا تفكر؟ شارك لحظتك…" rows={3}/>
-          {mediaFile&&<div className="selected-file">{mediaFile.name}<button onClick={()=>setMediaFile(null)}><X size={16}/></button></div>}
-          <div className="composer-actions"><label className="media-pick" htmlFor="post-media"><ImagePlus size={17}/> صورة أو فيديو</label><input id="post-media" type="file" accept="image/*,video/*" hidden onChange={e=>setMediaFile(e.target.files?.[0]||null)}/><button onClick={publish} disabled={(!draft.trim()&&!mediaFile)||busy}><Send size={16}/>{busy?"جارٍ النشر…":"نشر"}</button></div></div></section>
-        <div className="section-head posts-heading"><h2>آخر المنشورات</h2><span>{posts.length} منشور</span></div>
-        {posts.length===0?<div className="empty-feed"><div className="empty-mark">M</div><h2>هنا تبدأ لحظاتك</h2><p>لا توجد منشورات بعد. كن أول من يشارك لحظته.</p></div>:posts.map(post=><article className="post" key={post.id}><div className="post-head"><div className="avatar">{post.avatarUrl?<img src={post.avatarUrl} alt=""/>:post.avatar}</div><div className="post-author"><b>{post.author}</b><small>{post.handle} · {post.time}</small></div><button className="icon-button"><MoreHorizontal size={20}/></button></div>
-          {post.text&&<p>{post.text}</p>}{post.media?.map((url,i)=><div className="post-media" key={url}>{/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)?<video src={url} controls playsInline preload="metadata"/>:<img src={url} alt={"صورة المنشور "+(i+1)}/>}</div>)}
-          <div className="post-actions"><button className={likes.includes(post.id)?"liked":""} onClick={()=>toggleLike(post.id)}><Heart size={19}/>{likes.includes(post.id)?"أعجبك":"إعجاب"} · {post.likes}</button><button><MessageCircle size={19}/> تعليق</button><button><Send size={18}/> مشاركة</button></div></article>)}
-      </>:<section className="profile-page"><div className="profile-cover"></div><div className="profile-main"><div className="profile-avatar">{avatar?<img src={avatar} alt=""/>:(profile?.display_name||"م")[0]}</div><button className="edit-profile-btn" onClick={()=>setEditProfile(v=>!v)}><Pencil size={16}/> تعديل الملف</button>
-        <h2>{profile?.display_name||"عضو MOMENT"}</h2><p className="profile-handle">@{profile?.username||"أضف_اسم_مستخدم"}</p><p className="profile-bio">{profile?.bio||"أضف نبذة قصيرة تعرّف الناس بك."}</p>
-        <div className="profile-stats"><span><b>{posts.filter(p=>p.user_id===session.user.id).length}</b> منشور</span><span><b>{followers}</b> متابع</span><span><b>{following}</b> يتابع</span></div>
-        {editProfile&&<form className="profile-edit" onSubmit={saveProfile}><label>الاسم الظاهر<input value={name} onChange={e=>setName(e.target.value)} maxLength={50}/></label><label>اسم المستخدم<input value={username} onChange={e=>setUsername(e.target.value)} placeholder="username" dir="ltr"/></label><label>نبذة عنك<textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={160}/></label><label className="media-pick" htmlFor="avatar-file"><ImagePlus size={17}/> تغيير الصورة الشخصية</label><input id="avatar-file" type="file" accept="image/*" hidden onChange={e=>setAvatarFile(e.target.files?.[0]||null)}/>{avatarFile&&<small>{avatarFile.name}</small>}<div className="edit-actions"><button type="button" onClick={()=>setEditProfile(false)}>إلغاء</button><button type="submit" disabled={busy}>{busy?"جارٍ الحفظ…":"حفظ التغييرات"}</button></div></form>}
-        <h3>منشوراتي</h3>{posts.filter(p=>p.user_id===session.user.id).length===0?<p>لم تنشر شيئاً بعد.</p>:posts.filter(p=>p.user_id===session.user.id).map(p=><div className="profile-post" key={p.id}>{p.text}{p.media?.[0]&&<img src={p.media[0]} alt=""/>}</div>)}
-      </div></section>}
-      <footer>© MOMENT — كل لحظة تستحق أن تُشارك</footer>
-    </main>
-    <aside className="right-panel"><div className="search-box"><Search size={18}/><input placeholder="ابحث في MOMENT"/></div><section className="panel-card"><h3>ذكريات مشتركة</h3><p>اجمع صورك ولحظاتك مع أصدقائك في مساحة واحدة.</p></section><section className="panel-card muted"><h3>حسابك</h3><p>{email}</p><button onClick={()=>setPage("profile")}>عرض الملف الشخصي</button></section></aside>
-    <nav className="mobile-nav"><button onClick={()=>setPage("feed")}><Home/></button><button><Compass/></button><button onClick={()=>setPage("feed")}><Plus/></button><button><MessageCircle/></button><button onClick={()=>setPage("profile")}><UserRound/></button></nav>
-  </div>;
+ useEffect(()=>{if(!db){setReady(true);return;}db.auth.getSession().then(({data})=>{setSession(data.session);setReady(true);});const {data:{subscription}}=db.auth.onAuthStateChange((_e,s)=>setSession(s));return()=>subscription.unsubscribe();},[]);
+ async function loadProfile(){if(!db||!session)return;const {data,error}=await db.from("profiles").select("id,username,display_name,bio,avatar_url").eq("id",session.user.id).maybeSingle();if(error){setNotice("مشكلة الملف الشخصي: "+error.message);return;}if(data){setProfile(data as Profile);setName(data.display_name||"");setUsername(data.username||"");setBio(data.bio||"");}
+ const [a,b,f]=await Promise.all([db.from("follows").select("*",{count:"exact",head:true}).eq("following_id",session.user.id),db.from("follows").select("*",{count:"exact",head:true}).eq("follower_id",session.user.id),db.from("follows").select("following_id").eq("follower_id",session.user.id)]);setFollowers(a.count||0);setFollowing(b.count||0);setFollowingIds((f.data||[]).map((x:any)=>x.following_id));}
+ async function loadPosts(){if(!db||!session)return;const {data,error}=await db.from("posts").select("id,caption,media_urls,created_at,user_id,profiles(username,display_name,avatar_url)").order("created_at",{ascending:false}).limit(60);if(error){setNotice("تعذر تحميل المنشورات: "+error.message);return;}const rows=data||[],ids=rows.map((x:any)=>x.id);const [l,c]=await Promise.all([ids.length?db.from("likes").select("post_id,user_id").in("post_id",ids):Promise.resolve({data:[],error:null}),ids.length?db.from("comments").select("post_id").in("post_id",ids):Promise.resolve({data:[],error:null})]);const likesData=l.data||[],commentsData=c.data||[];setLikes(likesData.filter((x:any)=>x.user_id===session.user.id).map((x:any)=>x.post_id));setPosts(rows.map((p:any)=>({id:p.id,user_id:p.user_id,author:p.profiles?.display_name||"عضو MOMENT",handle:"@"+(p.profiles?.username||"member"),avatar:(p.profiles?.display_name||"م")[0],avatarUrl:p.profiles?.avatar_url||undefined,time:new Date(p.created_at).toLocaleString("ar"),text:p.caption||"",media:p.media_urls||[],likes:likesData.filter((x:any)=>x.post_id===p.id).length,comments:commentsData.filter((x:any)=>x.post_id===p.id).length}))); }
+ useEffect(()=>{if(session){void loadProfile();void loadPosts();}else{setProfile(null);setPosts([]);}},[session]);
+ async function upload(f:File,folder:string){if(!db||!session)throw new Error("سجّل الدخول أولاً.");const image=f.type.startsWith("image/"),video=f.type.startsWith("video/");if(!image&&!video)throw new Error("اختر صورة أو فيديو صالحاً.");if(f.size>(video?100:15)*1024*1024)throw new Error(video?"الفيديو أكبر من 100MB.":"الصورة أكبر من 15MB.");const ext=f.name.split(".").pop()?.toLowerCase()||"bin";const path=session.user.id+"/"+folder+"/"+crypto.randomUUID()+"."+ext;const {error}=await db.storage.from("moment-media").upload(path,f,{contentType:f.type,upsert:false});if(error)throw error;return db.storage.from("moment-media").getPublicUrl(path).data.publicUrl;}
+ async function publish(){if(!db||!session||(!draft.trim()&&!file))return;setBusy(true);setNotice("");try{const media=file?[await upload(file,"posts")]:[];const {error}=await db.from("posts").insert({user_id:session.user.id,caption:draft.trim(),media_urls:media});if(error)throw error;setDraft("");setFile(null);const input=document.getElementById("post-file") as HTMLInputElement|null;if(input)input.value="";await loadPosts();setNotice("تم نشر المنشور بنجاح.");}catch(e){setNotice("فشل النشر: "+(e instanceof Error?e.message:"خطأ غير معروف"));}finally{setBusy(false);}}
+ async function toggleLike(p:Post){if(!db||!session)return;const was=likes.includes(p.id);setLikes(v=>was?v.filter(x=>x!==p.id):[...v,p.id]);setPosts(v=>v.map(x=>x.id===p.id?{...x,likes:Math.max(0,x.likes+(was?-1:1))}:x));const result=was?await db.from("likes").delete().eq("post_id",p.id).eq("user_id",session.user.id):await db.from("likes").insert({post_id:p.id,user_id:session.user.id});if(result.error){setNotice("تعذر حفظ الإعجاب: "+result.error.message);await loadPosts();}}
+ async function loadComments(id:string){if(!db)return;const {data,error}=await db.from("comments").select("id,body,user_id,created_at,profiles(display_name,username)").eq("post_id",id).order("created_at",{ascending:true});if(error){setNotice("تعذر تحميل التعليقات: "+error.message);return;}setComments(v=>({...v,[id]:(data||[]).map((c:any)=>({id:c.id,body:c.body,user_id:c.user_id,author:c.profiles?.display_name||"عضو",handle:"@"+(c.profiles?.username||"member"),time:new Date(c.created_at).toLocaleString("ar")}))}));}
+ async function addComment(id:string){if(!db||!session)return;const body=(commentDraft[id]||"").trim();if(!body)return;const {error}=await db.from("comments").insert({post_id:id,user_id:session.user.id,body});if(error){setNotice("تعذر إضافة التعليق: "+error.message);return;}setCommentDraft(v=>({...v,[id]:""}));await loadComments(id);setPosts(v=>v.map(p=>p.id===id?{...p,comments:p.comments+1}:p));}
+ async function sharePost(p:Post){const shareUrl=location.origin+"/?post="+p.id;try{if(navigator.share)await navigator.share({title:"MOMENT",text:p.text||"شاهد هذه اللحظة على MOMENT",url:shareUrl});else{await navigator.clipboard.writeText(shareUrl);setNotice("تم نسخ رابط المنشور.");}}catch(e){if(e instanceof Error&&e.name!=="AbortError")setNotice("لم نتمكن من مشاركة الرابط.");}}
+ async function deletePost(p:Post){if(!db||!session||p.user_id!==session.user.id)return;if(!confirm("هل تريد حذف هذا المنشور؟"))return;const {error}=await db.from("posts").delete().eq("id",p.id).eq("user_id",session.user.id);if(error){setNotice("تعذر حذف المنشور: "+error.message);return;}setPosts(v=>v.filter(x=>x.id!==p.id));setNotice("تم حذف المنشور.");}
+ async function saveProfile(e:FormEvent){e.preventDefault();if(!db||!session)return;setBusy(true);try{let avatar=profile?.avatar_url||null;if(avatarFile)avatar=await upload(avatarFile,"avatars");const u=username.trim().toLowerCase().replace(/^@/,"");if(!/^[a-z0-9_]{3,24}$/.test(u))throw new Error("اسم المستخدم يجب أن يكون 3–24 حرفاً إنجليزياً أو رقماً أو _.");const {error}=await db.from("profiles").update({display_name:name.trim(),username:u,bio:bio.trim(),avatar_url:avatar}).eq("id",session.user.id);if(error)throw error;setEdit(false);setAvatarFile(null);await loadProfile();await loadPosts();setNotice("تم تحديث ملفك الشخصي.");}catch(e){setNotice("تعذر حفظ الملف: "+(e instanceof Error?e.message:"خطأ"));}finally{setBusy(false);}}
+ async function toggleFollow(id:string){if(!db||!session||id===session.user.id)return;const exists=followingIds.includes(id);setFollowingIds(v=>exists?v.filter(x=>x!==id):[...v,id]);const result=exists?await db.from("follows").delete().eq("follower_id",session.user.id).eq("following_id",id):await db.from("follows").insert({follower_id:session.user.id,following_id:id});if(result.error){setNotice("تعذر تحديث المتابعة: "+result.error.message);await loadProfile();}else await loadProfile();}
+ async function searchUsers(){if(!db||!search.trim())return;const term=search.trim().replace(/^@/,"");const {data,error}=await db.from("profiles").select("id,username,display_name,bio,avatar_url").or("username.ilike.%"+term+"%,display_name.ilike.%"+term+"%").limit(12);if(error){setNotice("تعذر البحث: "+error.message);return;}setSearchResults((data||[]) as Profile[]);}
+ const myPosts=useMemo(()=>posts.filter(p=>p.user_id===session?.user.id),[posts,session]);
+ if(!db)return <main className="auth-wrap" dir="rtl"><section className="auth-card"><h1>MOMENT</h1><p>إعداد الاتصال مطلوب: تحقق من متغيرات البناء في Cloudflare.</p></section></main>;
+ if(!ready)return <main className="auth-wrap">جارٍ التحقق…</main>;if(!session)return <AuthScreen/>;
+ const ownProfile=page==="profile"&&!viewProfile;const shownProfile=viewProfile||profile;
+ return <div className="app-shell" dir="rtl">
+ <aside className="sidebar"><div className="brand"><span className="brand-mark">M</span><span>MOMENT</span></div><nav><a className={page==="feed"?"active":""} onClick={()=>{setPage("feed");setViewProfile(null);}}><Home/> الرئيسية</a><a onClick={()=>{setPage("feed");document.getElementById("user-search")?.focus();}}><Compass/> استكشف</a><a onClick={()=>setNotice("الرسائل الخاصة قيد التطوير، ولن نعرض زرّاً وهمياً.")}><MessageCircle/> الرسائل</a><a onClick={()=>setNotice("الإشعارات ستضاف في المرحلة التالية.")}><Bell/> الإشعارات</a><a className={ownProfile?"active":""} onClick={()=>{setPage("profile");setViewProfile(null);}}><UserRound/> ملفي الشخصي</a></nav><button className="new-post" onClick={()=>{setPage("feed");document.getElementById("post-box")?.focus();}}><Plus/> لحظة جديدة</button><div className="sidebar-bottom"><span>{session.user.email}</span><button className="icon-button" onClick={()=>db.auth.signOut()}><LogOut/></button></div></aside>
+ <main className="feed"><header className="topbar"><div><span className="mobile-brand">MOMENT</span><h1>{page==="feed"?"الرئيسية":"الملف الشخصي"}</h1></div><button className="icon-button" onClick={()=>{void loadPosts();void loadProfile();}}><RefreshCw/></button></header>
+ {notice&&<div className="notice" role="status">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
+ {page==="feed"?<>
+ <section className="composer"><div className="composer-avatar">{profile?.avatar_url?<img src={profile.avatar_url} alt=""/>:(profile?.display_name||"م")[0]}</div><div className="composer-main"><textarea id="post-box" value={draft} onChange={e=>setDraft(e.target.value)} placeholder="بماذا تفكر؟ شارك لحظتك…" rows={3}/>{file&&<div className="selected-file">{file.name}<button onClick={()=>setFile(null)}><X size={16}/></button></div>}<div className="composer-actions"><label className="media-pick" htmlFor="post-file"><ImagePlus/> صورة أو فيديو</label><input id="post-file" type="file" accept="image/*,video/*" hidden onChange={e=>setFile(e.target.files?.[0]||null)}/><button onClick={publish} disabled={busy||(!draft.trim()&&!file)}><Send/>{busy?"جارٍ النشر…":"نشر"}</button></div></div></section>
+ <div className="section-head posts-heading"><h2>آخر المنشورات</h2><span>{posts.length} منشور</span></div>
+ {posts.length===0?<div className="empty-feed"><div className="empty-mark">M</div><h2>هنا تبدأ لحظاتك</h2><p>لا توجد منشورات بعد. كن أول من يشارك لحظته.</p></div>:posts.map(p=><article className="post" key={p.id}><div className="post-head"><button className="avatar avatar-button" onClick={()=>{setViewProfile(null);setPage("profile");void db.from("profiles").select("id,username,display_name,bio,avatar_url").eq("id",p.user_id).maybeSingle().then(({data})=>setViewProfile(data as Profile));}}>{p.avatarUrl?<img src={p.avatarUrl} alt=""/>:p.avatar}</button><div className="post-author"><b>{p.author}</b><small>{p.handle} · {p.time}</small></div>{p.user_id===session.user.id&&<button className="icon-button" onClick={()=>void deletePost(p)} title="حذف"><Trash2/></button>}</div>{p.text&&<p>{p.text}</p>}{p.media.map((m,i)=><div className="post-media" key={m}>{/\.(mp4|webm|mov|m4v)(\?|$)/i.test(m)?<video src={m} controls playsInline preload="metadata"/>:<img src={m} alt={"مرفق "+(i+1)}/>}</div>)}<div className="post-actions"><button className={likes.includes(p.id)?"liked":""} onClick={()=>void toggleLike(p)}><Heart/> إعجاب · {p.likes}</button><button onClick={()=>{const open=commentPost===p.id;setCommentPost(open?null:p.id);if(!open)void loadComments(p.id);}}><MessageCircle/> تعليق · {p.comments}</button><button onClick={()=>void sharePost(p)}><Share2/> مشاركة</button></div>{commentPost===p.id&&<section className="comments"><div className="comment-compose"><input value={commentDraft[p.id]||""} onChange={e=>setCommentDraft(v=>({...v,[p.id]:e.target.value}))} placeholder="اكتب تعليقاً…"/><button onClick={()=>void addComment(p.id)} disabled={!(commentDraft[p.id]||"").trim()}>إرسال</button></div>{(comments[p.id]||[]).map(c=><div className="comment" key={c.id}><b>{c.author}</b><small>{c.handle} · {c.time}</small><p>{c.body}</p></div>)}</section>}</article>)}
+ </>:<section className="profile-page"><div className="profile-cover"></div><div className="profile-main"><div className="profile-avatar">{shownProfile?.avatar_url?<img src={shownProfile.avatar_url} alt=""/>:(shownProfile?.display_name||"م")[0]}</div>{ownProfile&&<button className="edit-profile-btn" onClick={()=>setEdit(v=>!v)}><Pencil/> تعديل الملف</button>}<h2>{shownProfile?.display_name||"عضو MOMENT"}</h2><p className="profile-handle">@{shownProfile?.username||"member"}</p><p className="profile-bio">{shownProfile?.bio||"لا توجد نبذة بعد."}</p>{ownProfile&&<div className="profile-stats"><span><b>{myPosts.length}</b> منشور</span><span><b>{followers}</b> متابع</span><span><b>{following}</b> يتابع</span></div>}{!ownProfile&&shownProfile&&<button className="follow-btn" onClick={()=>void toggleFollow(shownProfile.id)}>{followingIds.includes(shownProfile.id)?"إلغاء المتابعة":"متابعة"}</button>}
+ {edit&&ownProfile&&<form className="profile-edit" onSubmit={saveProfile}><label>الاسم الظاهر<input required value={name} onChange={e=>setName(e.target.value)} maxLength={50}/></label><label>اسم المستخدم<input required value={username} onChange={e=>setUsername(e.target.value)} placeholder="username" dir="ltr"/></label><small>3–24 حرفاً إنجليزياً أو رقماً أو _</small><label>نبذة عنك<textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={160}/></label><label className="media-pick" htmlFor="avatar-file"><ImagePlus/> اختيار صورة شخصية</label><input id="avatar-file" type="file" accept="image/*" hidden onChange={e=>setAvatarFile(e.target.files?.[0]||null)}/>{avatarFile&&<small>{avatarFile.name}</small>}<div className="edit-actions"><button type="button" onClick={()=>setEdit(false)}>إلغاء</button><button type="submit" disabled={busy}>{busy?"جارٍ الحفظ…":"حفظ"}</button></div></form>}
+ <h3>المنشورات</h3>{posts.filter(p=>p.user_id===shownProfile?.id).map(p=><div className="profile-post" key={p.id}>{p.text}{p.media[0]&&<img src={p.media[0]} alt=""/>}</div>)}</div></section>}
+ <footer>© MOMENT — كل لحظة تستحق أن تُشارك</footer></main>
+ <aside className="right-panel"><div className="search-box"><Search/><input id="user-search" value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void searchUsers();}} placeholder="ابحث عن الأشخاص"/><button onClick={()=>void searchUsers()}>بحث</button></div>{searchResults.map(u=><div className="search-result" key={u.id}><button onClick={()=>{setPage("profile");setViewProfile(u);}}><b>{u.display_name||u.username}</b><small>@{u.username}</small></button><button onClick={()=>void toggleFollow(u.id)}>{followingIds.includes(u.id)?"إلغاء":"متابعة"}</button></div>)}<section className="panel-card"><h3>ذكريات مشتركة</h3><p>مساحة الذكريات المشتركة ستكون ضمن المرحلة التالية.</p></section></aside>
+ <nav className="mobile-nav"><button onClick={()=>{setPage("feed");setViewProfile(null);}}><Home/></button><button onClick={()=>document.getElementById("user-search")?.focus()}><Search/></button><button onClick={()=>{setPage("feed");document.getElementById("post-box")?.focus();}}><Plus/></button><button onClick={()=>setNotice("الرسائل الخاصة قيد التطوير.")}><MessageCircle/></button><button onClick={()=>{setPage("profile");setViewProfile(null);}}><UserRound/></button></nav></div>;
 }
